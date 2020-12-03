@@ -1,3 +1,6 @@
+from itertools import cycle
+import requests
+from lxml.html import fromstring
 import scrapy
 import re
 import json
@@ -10,6 +13,18 @@ from FashionWebScrap.FashionWebScrap.items import FashionWebScrapItem
 
 data = pd.read_csv('C:\\Users\\Akki\\Desktop\\products.csv')
 
+
+def get_proxies():
+    url = 'https://free-proxy-list.net/'
+    response = requests.get(url)
+    parser = fromstring(response.text)
+    proxies = set()
+    for i in parser.xpath('//tbody/tr'):
+        if i.xpath('.//td[7][contains(text(),"yes")]'):
+            #Grabbing IP and corresponding PORT
+            proxy = ":".join([i.xpath('.//td[1]/text()')[0], i.xpath('.//td[2]/text()')[0]])
+            proxies.add(proxy)
+    return proxies
 
 class Myntra(scrapy.Spider):
     name = 'myntra'  # name variable is fixed
@@ -62,12 +77,14 @@ class Ajio(scrapy.Spider):
         else:
             items['stock'] = 'Out of Stock'
 
+        urls = re.findall('(?:(?:https?|ftp):\/\/assets)+[\w/\-?=%.]+[MODEL\d*]+\.[.jpg]+', stockscript)
+
         items['pname'] = data_obj['name']
         items['seller'] = 'Ajio'
         items['uid'] = data_obj['mpn']
         items['bname'] = data_obj['brand']['name']
         items['price'] = data_obj['offers']['lowPrice']
-        items['img_url'] = data_obj['image']
+        items['img_url'] = list(dict.fromkeys(urls))[0]
 
         yield items
 
